@@ -2,6 +2,7 @@ from .base_interface import BaseInterface
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import gradio as gr
 import torch
+import intel_extension_for_pytorch as ipex
 import os
 from datetime import datetime
 
@@ -21,7 +22,7 @@ class NLLBInference(BaseInterface):
         self.available_models = NLLB_MODELS
         self.available_source_langs = list(NLLB_AVAILABLE_LANGS.keys())
         self.available_target_langs = list(NLLB_AVAILABLE_LANGS.keys())
-        self.device = 0 if torch.cuda.is_available() else -1
+        self.device = "xpu"
         self.pipeline = None
 
     def translate_text(self, text):
@@ -38,8 +39,10 @@ class NLLBInference(BaseInterface):
                 self.current_model_size = model_size
                 self.model = AutoModelForSeq2SeqLM.from_pretrained(pretrained_model_name_or_path=model_size,
                                                                    cache_dir=os.path.join("models", "NLLB"))
+                self.model = ipex.optimize(self.model.to('xpu'))
                 self.tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name_or_path=model_size,
                                                                cache_dir=os.path.join("models", "NLLB", "tokenizers"))
+                self.tokenizer = ipex.optimize(self.tokenizer.to('xpu'))
 
             src_lang = NLLB_AVAILABLE_LANGS[src_lang]
             tgt_lang = NLLB_AVAILABLE_LANGS[tgt_lang]
